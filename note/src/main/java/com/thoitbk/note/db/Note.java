@@ -9,7 +9,7 @@ public class Note {
     public static final String COLUMN_TITLE = "title";
     public static final String COLUMN_CONTENT = "content";
 
-    private static final String CREATE_TABLE = "CREATE TABLE" +  TABLE_NOTE + "(" +
+    private static final String CREATE_TABLE = "CREATE TABLE " +  TABLE_NOTE + "(" +
             COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
             COLUMN_TITLE + " TEXT NOT NULL, " +
             COLUMN_CONTENT + " TEXT);";
@@ -18,6 +18,11 @@ public class Note {
     private int id;
     private String title;
     private String content;
+
+    public Note(String title, String content) {
+        this.title = title;
+        this.content = content;
+    }
 
     public int getId() {
         return id;

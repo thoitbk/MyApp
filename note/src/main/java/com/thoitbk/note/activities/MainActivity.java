@@ -2,20 +2,25 @@ package com.thoitbk.note.activities;
 
 import android.app.Fragment;
 import android.app.FragmentManager;
-import android.support.v7.app.AppCompatActivity;
+import android.database.Cursor;
 import android.os.Bundle;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.Loader;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import com.thoitbk.note.R;
 import com.thoitbk.note.fragments.NoteDialogFragment;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
     private Toolbar toolbar;
+    private ListView noteListView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,6 +35,8 @@ public class MainActivity extends AppCompatActivity {
                 return onOptionsItemSelected(item);
             }
         });
+
+        noteListView = (ListView) findViewById(R.id.noteList);
     }
 
     @Override
@@ -45,7 +52,6 @@ public class MainActivity extends AppCompatActivity {
         switch (selectedItem) {
             case R.id.add_note:
                 Toast.makeText(this, "add note", Toast.LENGTH_LONG).show();
-                NoteDialogFragment noteDialogFragment = new NoteDialogFragment();
                 showNoteDialog();
                 break;
             case R.id.setting:
@@ -66,5 +72,20 @@ public class MainActivity extends AppCompatActivity {
         }
         NoteDialogFragment noteDialogFragment = new NoteDialogFragment();
         noteDialogFragment.show(fragmentManager, "noteDialog");
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        return null;
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+
     }
 }

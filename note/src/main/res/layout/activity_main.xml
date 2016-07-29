@@ -11,7 +11,13 @@
         android:layout_height="wrap_content"
         android:background="?attr/colorPrimary"
         android:minHeight="?attr/actionBarSize">
-
     </android.support.v7.widget.Toolbar>
+
+    <ListView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/noteList"
+        android:layout_below="@id/toolBar">
+    </ListView>
 
 </RelativeLayout>
