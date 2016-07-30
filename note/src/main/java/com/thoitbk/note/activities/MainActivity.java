@@ -5,7 +5,9 @@ import android.app.FragmentManager;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
+import android.support.v4.widget.SimpleCursorAdapter;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
@@ -15,12 +17,16 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.thoitbk.note.R;
+import com.thoitbk.note.contentproviders.NoteContentProvider;
+import com.thoitbk.note.db.Note;
 import com.thoitbk.note.fragments.NoteDialogFragment;
 
 public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
     private Toolbar toolbar;
     private ListView noteListView;
+
+    private SimpleCursorAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +43,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         });
 
         noteListView = (ListView) findViewById(R.id.noteList);
+        fillData();
     }
 
     @Override
@@ -74,18 +81,28 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         noteDialogFragment.show(fragmentManager, "noteDialog");
     }
 
+    private void fillData() {
+        String from[] = {Note.COLUMN_TITLE, Note.COLUMN_CONTENT};
+        int to[] = {R.id.row_title, R.id.row_content};
+        getSupportLoaderManager().initLoader(0, null, this).forceLoad();
+        adapter = new SimpleCursorAdapter(this, R.layout.note_row, null, from, to, 0);
+        noteListView.setAdapter(adapter);
+    }
+
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-        return null;
+        String[] projection = {Note.COLUMN_ID, Note.COLUMN_TITLE, Note.COLUMN_CONTENT};
+        CursorLoader cursorLoader = new CursorLoader(this, NoteContentProvider.CONTENT_URI, projection, null, null, null);
+        return cursorLoader;
     }
 
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-
+        adapter.swapCursor(data);
     }
 
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
-
+        adapter.swapCursor(null);
     }
 }
