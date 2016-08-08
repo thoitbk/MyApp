@@ -1,6 +1,7 @@
 package com.thoitbk.note.fragments;
 
 import android.app.DialogFragment;
+import android.content.ContentValues;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -12,8 +13,8 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import com.thoitbk.note.R;
+import com.thoitbk.note.contentproviders.NoteContentProvider;
 import com.thoitbk.note.db.Note;
-import com.thoitbk.note.db.NoteDAO;
 
 public class NoteDialogFragment extends DialogFragment implements View.OnClickListener {
 
@@ -66,10 +67,10 @@ public class NoteDialogFragment extends DialogFragment implements View.OnClickLi
 
         @Override
         protected Void doInBackground(Note... params) {
-            NoteDAO noteDAO = new NoteDAO(getActivity());
-            noteDAO.open();
-            noteDAO.createNote(params[0]);
-            noteDAO.close();
+            ContentValues values = new ContentValues();
+            values.put(Note.COLUMN_TITLE, params[0].getTitle());
+            values.put(Note.COLUMN_CONTENT, params[0].getContent());
+            NoteDialogFragment.this.getActivity().getContentResolver().insert(NoteContentProvider.CONTENT_URI, values);
             return null;
         }
 

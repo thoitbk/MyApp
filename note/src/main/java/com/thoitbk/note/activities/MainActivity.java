@@ -7,26 +7,32 @@ import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
-import android.support.v4.widget.SimpleCursorAdapter;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.view.ActionMode;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
 
 import com.thoitbk.note.R;
+import com.thoitbk.note.adapters.CustomCursorAdapter;
 import com.thoitbk.note.contentproviders.NoteContentProvider;
 import com.thoitbk.note.db.Note;
 import com.thoitbk.note.fragments.NoteDialogFragment;
 
-public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor> {
+import java.util.ArrayList;
+import java.util.List;
+
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>, ActionMode.Callback {
 
     private Toolbar toolbar;
     private ListView noteListView;
 
-    private SimpleCursorAdapter adapter;
+    private CustomCursorAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,7 +49,58 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         });
 
         noteListView = (ListView) findViewById(R.id.noteList);
-        fillData();
+        loadData();
+        noteListView.setOnItemLongClickListener(new NoteListViewLongClickListener());
+    }
+
+    private ActionMode mActionMode;
+    private List<Integer> selectedItems = new ArrayList<Integer>();
+
+    private class NoteListViewLongClickListener implements AdapterView.OnItemLongClickListener {
+
+        @Override
+        public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+            if (mActionMode == null) {
+                mActionMode = MainActivity.this.startSupportActionMode(MainActivity.this);
+                loadData();
+            }
+            if (selectedItems.contains(position)) {
+                toggleSelectedItem(position, false);
+                selectedItems.remove(new Integer(position));
+
+            } else {
+                toggleSelectedItem(position, true);
+                selectedItems.add(position);
+            }
+            if (mActionMode != null && selectedItems.isEmpty()) {
+                mActionMode.finish();
+                mActionMode = null;
+                return true;
+            }
+
+            return true;
+        }
+    }
+
+    private void toggleSelectedItem(int pos, boolean checked) {
+        int colorResource = checked ? R.color.selectedColor : android.R.color.transparent;
+        View view = getViewByPosition(pos, noteListView);
+        if (view != null) {
+            view.setBackgroundResource(colorResource);
+
+        }
+    }
+
+    private View getViewByPosition(int pos, ListView listView) {
+        final int firstListItemPosition = listView.getFirstVisiblePosition();
+        final int lastListItemPosition = firstListItemPosition + listView.getChildCount() - 1;
+
+        if (pos < firstListItemPosition || pos > lastListItemPosition ) {
+            return listView.getAdapter().getView(pos, null, listView);
+        } else {
+            final int childIndex = pos - firstListItemPosition;
+            return listView.getChildAt(childIndex);
+        }
     }
 
     @Override
@@ -81,11 +138,12 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         noteDialogFragment.show(fragmentManager, "noteDialog");
     }
 
-    private void fillData() {
+    private void loadData() {
         String from[] = {Note.COLUMN_TITLE, Note.COLUMN_CONTENT};
         int to[] = {R.id.row_title, R.id.row_content};
-        getSupportLoaderManager().initLoader(0, null, this).forceLoad();
-        adapter = new SimpleCursorAdapter(this, R.layout.note_row, null, from, to, 0);
+        int layout = mActionMode == null ? R.layout.note_row : R.layout.selected_note_row;
+        adapter = new CustomCursorAdapter(this, layout, null, from, to , 0, false);
+        getSupportLoaderManager().initLoader(0, null, this);
         noteListView.setAdapter(adapter);
     }
 
@@ -104,5 +162,40 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
         adapter.swapCursor(null);
+    }
+
+    @Override
+    public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+        MenuInflater inflater = mode.getMenuInflater();
+        inflater.inflate(R.menu.main_cab_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+        return false;
+    }
+
+    @Override
+    public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.delete_note:
+                mode.finish();
+                return true;
+            default:
+                mode.finish();
+                return true;
+        }
+    }
+
+    @Override
+    public void onDestroyActionMode(ActionMode mode) {
+        mode.finish();
+        mActionMode = null;
+        loadData();
+        for (Integer selectedItem : selectedItems) {
+            getViewByPosition(selectedItem, noteListView).setBackgroundResource(android.R.color.transparent);
+        }
+        selectedItems.clear();
     }
 }
