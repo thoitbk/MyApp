@@ -60,6 +60,7 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
 
         @Override
         public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+            Toast.makeText(MainActivity.this, String.valueOf(id), Toast.LENGTH_SHORT).show();
             if (mActionMode == null) {
                 mActionMode = MainActivity.this.startSupportActionMode(MainActivity.this);
                 loadData();
@@ -85,9 +86,10 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     private void toggleSelectedItem(int pos, boolean checked) {
         int colorResource = checked ? R.color.selectedColor : android.R.color.transparent;
         View view = getViewByPosition(pos, noteListView);
+        view.setSelected(checked);
+
         if (view != null) {
             view.setBackgroundResource(colorResource);
-
         }
     }
 
