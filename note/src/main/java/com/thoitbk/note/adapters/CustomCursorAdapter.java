@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.thoitbk.note.R;
 import com.thoitbk.note.db.Note;
@@ -25,10 +26,9 @@ public class CustomCursorAdapter extends SimpleCursorAdapter {
     private String[] from;
     private int[] to;
     private final LayoutInflater inflater;
-    private boolean isInActionMode;
 
     public CustomCursorAdapter(Context context, int layout, Cursor c, String[] from, int[] to,
-                               int flags, boolean isInActionMode) {
+                               int flags) {
         super(context, layout, c, from, to, flags);
         this.context = context;
         this.layout = layout;
@@ -38,11 +38,31 @@ public class CustomCursorAdapter extends SimpleCursorAdapter {
         this.inflater = LayoutInflater.from(context);
     }
 
-    public void setInActionMode(boolean isInActionMode) {
-        this.isInActionMode = isInActionMode;
+    private List<Integer> checkPositions = new ArrayList<Integer>();
+
+    public boolean addCheckPosition(Integer pos) {
+        if (!checkPositions.contains(pos)) {
+            checkPositions.add(pos);
+            return true;
+        }
+        return false;
     }
 
-    private List<Integer> checkPositions = new ArrayList<Integer>();
+    public boolean removeCheckPosition(Integer pos) {
+        if (checkPositions.contains(pos)) {
+            checkPositions.remove(pos);
+            return true;
+        }
+        return false;
+    }
+
+    public List<Integer> getCheckPositions() {
+        return this.checkPositions;
+    }
+
+    public void setCheckPositions(List<Integer> checkPositions) {
+        this.checkPositions = checkPositions;
+    }
 
 //    @Override
 //    public View newView(Context context, Cursor cursor, ViewGroup parent) {
@@ -107,14 +127,12 @@ public class CustomCursorAdapter extends SimpleCursorAdapter {
                         Integer pos = (Integer) viewHolder.checkBox.getTag();
                         if (pos != null) {
                             if (compoundButton.isChecked()) {
-                                if (!checkPositions.contains(pos)) {
-                                    checkPositions.add(pos);
-                                    ((View) compoundButton.getParent()).setBackgroundResource(R.color.selectedColor);
+                                if (addCheckPosition(pos)) {
+                                    ((CheckStateChanged) context).onCheckStateChanged(true, (View) compoundButton.getParent());
                                 }
                             } else {
-                                if (checkPositions.contains(pos)) {
-                                    checkPositions.remove(pos);
-                                    ((View) compoundButton.getParent()).setBackgroundResource(android.R.color.transparent);
+                                if (removeCheckPosition(pos)) {
+                                    ((CheckStateChanged) context).onCheckStateChanged(false, (View) compoundButton.getParent());
                                 }
                             }
                         }
@@ -130,19 +148,21 @@ public class CustomCursorAdapter extends SimpleCursorAdapter {
         }
 
         Cursor cursor = this.getCursor();
-        cursor.moveToPosition(position);
+        if (cursor != null) {
+            cursor.moveToPosition(position);
 
-        int titleIndex = cursor.getColumnIndexOrThrow(Note.COLUMN_TITLE);
-        int contentIndex = cursor.getColumnIndexOrThrow(Note.COLUMN_CONTENT);
+            int titleIndex = cursor.getColumnIndexOrThrow(Note.COLUMN_TITLE);
+            int contentIndex = cursor.getColumnIndexOrThrow(Note.COLUMN_CONTENT);
 
-        ViewHolder viewHolder = (ViewHolder) view.getTag();
-        viewHolder.title.setText(cursor.getString(titleIndex));
-        viewHolder.content.setText(cursor.getString(contentIndex));
-        if (layout == R.layout.selected_note_row) {
-            boolean checked = checkPositions.contains(position);
-            viewHolder.checkBox.setChecked(checked);
-            int colorResource = checked ? R.color.selectedColor : android.R.color.transparent;
-            view.setBackgroundResource(colorResource);
+            ViewHolder viewHolder = (ViewHolder) view.getTag();
+            viewHolder.title.setText(cursor.getString(titleIndex));
+            viewHolder.content.setText(cursor.getString(contentIndex));
+            if (layout == R.layout.selected_note_row) {
+                boolean checked = checkPositions.contains(position);
+                viewHolder.checkBox.setChecked(checked);
+                int colorResource = checked ? R.color.selectedColor : android.R.color.transparent;
+                view.setBackgroundResource(colorResource);
+            }
         }
 
         return view;
@@ -152,5 +172,9 @@ public class CustomCursorAdapter extends SimpleCursorAdapter {
         public TextView title;
         public TextView content;
         public CheckBox checkBox;
+    }
+
+    public interface CheckStateChanged {
+        public void onCheckStateChanged(boolean check, View view);
     }
 }

@@ -1,20 +1,22 @@
 package com.thoitbk.note.activities;
 
-import android.app.Fragment;
-import android.app.FragmentManager;
+import android.support.v4.app.Fragment;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.view.ActionMode;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.CheckBox;
 import android.widget.ListView;
 import android.widget.Toast;
 
@@ -27,17 +29,19 @@ import com.thoitbk.note.fragments.NoteDialogFragment;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>, ActionMode.Callback {
+public class MainActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Cursor>, ActionMode.Callback, CustomCursorAdapter.CheckStateChanged {
 
     private Toolbar toolbar;
     private ListView noteListView;
 
     private CustomCursorAdapter adapter;
+    private RetainFragment mRetainFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         toolbar = (Toolbar) findViewById(R.id.toolBar);
         setSupportActionBar(toolbar);
 
@@ -49,12 +53,50 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         });
 
         noteListView = (ListView) findViewById(R.id.noteList);
-        loadData();
         noteListView.setOnItemLongClickListener(new NoteListViewLongClickListener());
+        loadData();
+
+        mRetainFragment = (RetainFragment) getSupportFragmentManager().findFragmentByTag("retain_fragment");
+        if (mRetainFragment == null) {
+            mRetainFragment = new RetainFragment();
+            getSupportFragmentManager().beginTransaction().add(mRetainFragment, "retain_fragment").commit();
+        } else {
+            List<Integer> selectedItems = mRetainFragment.getSelectedItems();
+            Log.e("thoitbk.e", String.valueOf(selectedItems.size()));
+            if (selectedItems != null && !selectedItems.isEmpty()) {
+                mActionMode = MainActivity.this.startSupportActionMode(this);
+                loadData();
+                adapter.setCheckPositions(selectedItems);
+            }
+        }
+    }
+
+    private void loadData() {
+        String from[] = {Note.COLUMN_TITLE, Note.COLUMN_CONTENT};
+        int to[] = {R.id.row_title, R.id.row_content};
+        int layout = mActionMode == null ? R.layout.note_row : R.layout.selected_note_row;
+        adapter = new CustomCursorAdapter(this, layout, null, from, to , 0);
+        getSupportLoaderManager().initLoader(0, null, this);
+        noteListView.setAdapter(adapter);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        mRetainFragment.setSelectedItems(((CustomCursorAdapter) noteListView.getAdapter()).getCheckPositions());
     }
 
     private ActionMode mActionMode;
-    private List<Integer> selectedItems = new ArrayList<Integer>();
+
+    @Override
+    public void onCheckStateChanged(boolean check, View view) {
+        int colorResource = check ? R.color.selectedColor : android.R.color.transparent;
+        view.setBackgroundResource(colorResource);
+        if (((CustomCursorAdapter) noteListView.getAdapter()).getCheckPositions().isEmpty()) {
+            mActionMode.finish();
+            mActionMode = null;
+        }
+    }
 
     private class NoteListViewLongClickListener implements AdapterView.OnItemLongClickListener {
 
@@ -65,15 +107,16 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
                 mActionMode = MainActivity.this.startSupportActionMode(MainActivity.this);
                 loadData();
             }
-            if (selectedItems.contains(position)) {
+            CustomCursorAdapter customCursorAdapter = (CustomCursorAdapter) noteListView.getAdapter();
+            if (customCursorAdapter.getCheckPositions().contains(position)) {
                 toggleSelectedItem(position, false);
-                selectedItems.remove(new Integer(position));
+                customCursorAdapter.removeCheckPosition(position);
 
             } else {
                 toggleSelectedItem(position, true);
-                selectedItems.add(position);
+                customCursorAdapter.addCheckPosition(position);
             }
-            if (mActionMode != null && selectedItems.isEmpty()) {
+            if (mActionMode != null && customCursorAdapter.getCheckPositions().isEmpty()) {
                 mActionMode.finish();
                 mActionMode = null;
                 return true;
@@ -84,18 +127,21 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     }
 
     private void toggleSelectedItem(int pos, boolean checked) {
-        int colorResource = checked ? R.color.selectedColor : android.R.color.transparent;
         View view = getViewByPosition(pos, noteListView);
-        view.setSelected(checked);
 
         if (view != null) {
+            int colorResource = checked ? R.color.selectedColor : android.R.color.transparent;
             view.setBackgroundResource(colorResource);
+            CheckBox checkBox = (CheckBox) view.findViewById(R.id.checkbox);
+            checkBox.setChecked(checked);
+            view.setSelected(checked);
         }
     }
 
     private View getViewByPosition(int pos, ListView listView) {
         final int firstListItemPosition = listView.getFirstVisiblePosition();
         final int lastListItemPosition = firstListItemPosition + listView.getChildCount() - 1;
+        Log.e("thoitbk.e", String.valueOf("first: " + firstListItemPosition + " last: " + lastListItemPosition + " pos: " + pos + " index: " + (pos - firstListItemPosition)));
 
         if (pos < firstListItemPosition || pos > lastListItemPosition ) {
             return listView.getAdapter().getView(pos, null, listView);
@@ -131,22 +177,13 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     }
 
     private void showNoteDialog() {
-        FragmentManager fragmentManager = getFragmentManager();
+        FragmentManager fragmentManager = getSupportFragmentManager();
         Fragment fragment = fragmentManager.findFragmentByTag("noteDialog");
         if (fragment != null) {
             fragmentManager.beginTransaction().remove(fragment).commit();
         }
         NoteDialogFragment noteDialogFragment = new NoteDialogFragment();
         noteDialogFragment.show(fragmentManager, "noteDialog");
-    }
-
-    private void loadData() {
-        String from[] = {Note.COLUMN_TITLE, Note.COLUMN_CONTENT};
-        int to[] = {R.id.row_title, R.id.row_content};
-        int layout = mActionMode == null ? R.layout.note_row : R.layout.selected_note_row;
-        adapter = new CustomCursorAdapter(this, layout, null, from, to , 0, false);
-        getSupportLoaderManager().initLoader(0, null, this);
-        noteListView.setAdapter(adapter);
     }
 
     @Override
@@ -182,7 +219,19 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
     public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
         switch (item.getItemId()) {
             case R.id.delete_note:
-                mode.finish();
+                List<Integer> selectedItems = ((CustomCursorAdapter) noteListView.getAdapter()).getCheckPositions();
+                List<Long> ids = new ArrayList<Long>();
+                Cursor cursor = ((CustomCursorAdapter) noteListView.getAdapter()).getCursor();
+                for (Integer selectedItem : selectedItems) {
+                    cursor.moveToPosition(selectedItem);
+                    Long id = cursor.getLong(cursor.getColumnIndexOrThrow(Note.COLUMN_ID));
+                    ids.add(id);
+                }
+                for (Long id : ids) {
+                    this.getContentResolver().delete(NoteContentProvider.CONTENT_URI, "_id = ?", new String[] {String.valueOf(id)});
+                }
+                selectedItems.clear();
+                //mode.finish();
                 return true;
             default:
                 mode.finish();
@@ -195,9 +244,24 @@ public class MainActivity extends AppCompatActivity implements LoaderManager.Loa
         mode.finish();
         mActionMode = null;
         loadData();
-        for (Integer selectedItem : selectedItems) {
-            getViewByPosition(selectedItem, noteListView).setBackgroundResource(android.R.color.transparent);
+    }
+
+    public static class RetainFragment extends Fragment {
+
+        private List<Integer> selectedItems;
+
+        @Override
+        public void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setRetainInstance(true);
         }
-        selectedItems.clear();
+
+        public void setSelectedItems(List<Integer> selectedItems) {
+            this.selectedItems = selectedItems;
+        }
+
+        public List<Integer> getSelectedItems() {
+            return this.selectedItems;
+        }
     }
 }
